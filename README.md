@@ -1,1 +1,3 @@
 # Updawg, Network Scanner
+<h2>Running</h2>
+This program should be easy to run, simple download the file and run it using java. The program will create a config file located in C:\Sol\UpDawg.config
