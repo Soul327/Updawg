@@ -92,8 +92,8 @@ public class SQLClient {
 			ResultSet rs = stmt.executeQuery("SELECT * FROM Ips");
 			while (rs.next()) {
 				Address address = null;
-				String pingingAddress = rs.getString(2);
-				String nickname = rs.getString(5);
+				String pingingAddress = rs.getString("PingingAddress");
+				String nickname = rs.getString("NickName");
 				
 				for(int x=0;x<UpDawgLauncher.addresses.size();x++)
 					if(UpDawgLauncher.addresses.get(x).pingingAddress.equals(pingingAddress)) {
