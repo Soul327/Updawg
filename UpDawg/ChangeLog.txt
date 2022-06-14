@@ -1,0 +1,8 @@
+2.2.5
+Added GroupIDs allowing for multiple groups to use UpDawg
+Now print to the console when a new address is picked up from the SQL
+The time and date is logged to the SQL server when a ping occurs
+H
+
+** Bugs **
+Fixed sql_updateAddress not working as intended

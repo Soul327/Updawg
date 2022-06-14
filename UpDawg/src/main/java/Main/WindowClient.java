@@ -43,6 +43,7 @@ public class WindowClient implements SimpleWindowEvent {
 		int col = 0, lz = 0;
 		for(int z=0;z<UpDawgLauncher.addresses.size();z++) {
 			Address a = UpDawgLauncher.addresses.get(z);
+			if(a.hidden) continue;
 			if(g.fontSize*(1+z-lz) > window.height) { lz = z; col++; }
 			
 			switch(a.status) {
@@ -90,8 +91,6 @@ public class WindowClient implements SimpleWindowEvent {
 				infoMenuList.add("Hostname: "+a.hostName);
 				infoMenuList.add("Nickname: "+a.nickname);
 				infoMenuList.add("Pinging Address: "+a.pingingAddress);
-				infoMenuList.add("Last Ping Time: "+(int)( a.lastTime / 1000000 )+"ms");
-				infoMenuList.add("Adv Ping Time: " +(int)( a.advTime  / 1000000 )+"ms");
 				
 				// Write ports out
 				for(int z=0;z<a.ports.size();z++) {

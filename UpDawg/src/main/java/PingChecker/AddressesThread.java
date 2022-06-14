@@ -57,7 +57,7 @@ public class AddressesThread extends Thread {
 			
 			boolean read = false;
 			for(String s:output) {
-				if(s == null || s.length() == 0) read = false;
+				if(s == null || s.length() == 0 || s.startsWith("MAC")) read = false;
 				if(read) address.addPort(s);
 				if(s.startsWith("PORT")) read = true;
 			}

@@ -7,13 +7,9 @@ import Main.SQLClient;
 import java.time.LocalDateTime;
 
 public class Address {
-	public boolean updateSQL = false;
-	public boolean pingWorking = false;
+	public boolean updateSQL = false, pingWorking = false, hidden = false;
 	public int status = -1;
-	public long lastTime = -1, advTime = -1;
-	public String address = "", hostName = "", nickname = "", pingingAddress = "";
-	
-	ArrayList<Long> times = new ArrayList<Long>();
+	public String address = "", hostName = "", nickname = "", pingingAddress = "", uid = "-1";
 	
 	public ArrayList<Port> ports = new ArrayList<Port>();
 	
@@ -23,10 +19,11 @@ public class Address {
 	// Time
 	public LocalDateTime lastPingTime, lastTempCheck, lastDownTime;
 	
-	public Address(String address) {
+	public Address(String address, String uid) {
 		nickname = hostName = address;
 		this.address = address;
 		pingingAddress = address;
+		this.uid = uid;
 	}
 	
 	// Will reset the lastTemp, lastHumidity, and status when they have not been pinged after a certain amount of time
@@ -40,30 +37,22 @@ public class Address {
 				return;
 			}
 		ports.add(port);
+		updateSQL = true;
 	}
 	
 	public void setDown() {
 		updateSQL = status != 0;
 		status = (status > 0)?status - 1:0;
 		lastDownTime = LocalDateTime.now();
-		SQLClient.update();
+		SQLClient.update(this);
 	}
 	public void setUp() {
 		// Check if change is made
 		updateSQL = status != 2;
 		status = 2;
-		SQLClient.update();
+		SQLClient.update(this);
 	}
 	
 	public void setLastPingTime() { lastPingTime =  LocalDateTime.now(); }
 	public void setLastTempCheck() { lastTempCheck =  LocalDateTime.now(); }
-	public long getSumOfTimes() {
-		long sum = 0;
-		for(int z=0;z<times.size();z++)
-			sum += times.get(z);
-		return sum;
-	}
-	public long getAdvOfTimes() {
-		return getSumOfTimes() / times.size();
-	}
 }

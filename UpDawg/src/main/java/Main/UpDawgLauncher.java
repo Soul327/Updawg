@@ -3,8 +3,17 @@ package Main;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.event.KeyEvent;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 import Misc.KeyManager;
 import Misc.MouseManager;
@@ -17,12 +26,13 @@ import Rendering.Graphics;
 import Threading.ThreadManager;
 
 public class UpDawgLauncher implements SimpleWindowEvent {
-	public static String version = "Version 2.2.4";
+	public static String version = "Version 2.2.5b";
 	public static SimpleWindow window;
 	
 	public static ArrayList<Address> addresses = new ArrayList<Address>();
 	
 	public static void main(String[] args) throws IOException, InterruptedException {
+		log("UpDawg " + version + "\n");
 		boolean run = true;
 		Config.init();
 		Config.writeConfigFile();
@@ -41,19 +51,21 @@ public class UpDawgLauncher implements SimpleWindowEvent {
 		while(run) {
 			for(int x=0;UpDawgLauncher.addresses != null && x<UpDawgLauncher.addresses.size();x++) {
 				Thread thread = new AddressesThread(UpDawgLauncher.addresses.get(x));
-//				thread.setDaemon(true);
 				tm.addThread( thread );
 			}
 			tm.run();
 			
-			if(Config.sql_enable && Config.sql_getAddresses) SQLClient.getAddresses();
+			if(Config.sql_enable) {
+				if(Config.sql_getAddresses) SQLClient.getAddresses();
+//				SQLClient.updateForce();
+			}
 		}
 		
 		if(Config.sql_enable) SQLClient.closeConnection();
 	}
 	
 	public UpDawgLauncher() {
-		System.out.println("Starting local client");
+		log("Starting local client\n");
 		window = new SimpleWindow();
 		window.addSimpleWindowEvent(this);
 		window.width = 1005;
@@ -71,14 +83,21 @@ public class UpDawgLauncher implements SimpleWindowEvent {
 		longestAddress = 0;
 		g.setFont("Courier New", Font.PLAIN, Config.swFontSize);
 		//
-		for(int z=0;z<addresses.size();z++)
+		for(int z=0;z<addresses.size();z++) {
 			if(longestAddress < g.getStringLength( addresses.get(z).nickname ) )
 				longestAddress = g.getStringLength( addresses.get(z).nickname );
+		}
 		longestAddress += 10;
 		
-		int col = 0, lz = 0;
-		for(int z=0;z<addresses.size();z++) {
-			Address a = addresses.get(z);
+		int col = 0, lz = 0, offset = 0;
+		for(int z=0;z<addresses.size()-offset;z++) {
+			Address a = addresses.get(z + offset);
+			if(a.hidden) {
+				offset++;
+				z--;
+				continue;
+			}
+			
 			if(g.fontSize*(1+z-lz) > window.height) { lz = z; col++; }
 			
 			switch(a.status) {
@@ -126,8 +145,6 @@ public class UpDawgLauncher implements SimpleWindowEvent {
 				infoMenuList.add("Hostname: "+a.hostName);
 				infoMenuList.add("Nickname: "+a.nickname);
 				infoMenuList.add("Pinging Address: "+a.pingingAddress);
-				infoMenuList.add("Last Ping Time: "+(int)( a.lastTime / 1000000 )+"ms");
-				infoMenuList.add("Adv Ping Time: " +(int)( a.advTime  / 1000000 )+"ms");
 				
 				// Write ports out
 				for(int z=0;z<a.ports.size();z++) {
@@ -173,5 +190,33 @@ public class UpDawgLauncher implements SimpleWindowEvent {
 			g.drawOutlinedString(infoMenuList.get(z), window.width-width+5, g.fontSize*(1+z)-g.fontSize*.2);
 		
 		infoMenuList = new ArrayList<String>();
+	}
+	
+	public static void log(String message) {
+		String dt = Config.dtf.format( LocalDateTime.now() );
+		
+		String log = String.format("%s: %s", dt, message);
+		System.out.print( log );
+		
+		/* Write to file */
+		if(Config.currentLogFile == null || !Config.currentLogFile.exists()) {
+			int num = 0;
+			do {
+				DateTimeFormatter dtf = DateTimeFormatter.ofPattern("MM-dd-YYYY");
+				String fileName = dtf.format( LocalDateTime.now() ) + " " + num + ".log";
+				Config.currentLogFile = new File(Config.directory.getAbsolutePath() + "\\logs\\" + fileName);
+				num++;
+			} while( Config.currentLogFile.exists() );
+			try {
+				if( !Config.currentLogFile.getParentFile().exists() )
+					Config.currentLogFile.getParentFile().mkdirs();
+				Config.currentLogFile.createNewFile();
+			} catch (IOException e) { e.printStackTrace(); return; }
+		}
+		try {
+			Files.write(Config.currentLogFile.toPath(), log.getBytes(), StandardOpenOption.APPEND);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }

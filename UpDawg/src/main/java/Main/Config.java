@@ -13,7 +13,9 @@ public class Config {
 	static DateTimeFormatter dtf = DateTimeFormatter.ofPattern("hh:mm:ssa MM/dd/YYYY");
 	
 	// General
+	public static File    directory = new File("C:\\Sol\\Updawg");
 	public static File    configFile  = new File("C:\\Sol\\UpDawg.config");
+	public static File    currentLogFile = null;
 	public static boolean debug = false;
 	
 	//Ping Information
@@ -35,6 +37,7 @@ public class Config {
 	
 	// SQL
 	public static boolean sql_enable          = true;
+	public static boolean sql_lazy            = false;
 	public static boolean sql_getAddresses    = true;
 	public static boolean sql_updateAddresses = false;
 	public static int     sql_updateTime      = 1000*10;// In milliseconds
@@ -42,6 +45,7 @@ public class Config {
 	public static String  sql_username        = "";
 	public static String  sql_password        = "";
 	public static String  sql_database        = "";
+	public static String  sql_groupID         = "";
 	
 	public static void init() {
 		if(!GetSystemInfo.isWindows())
@@ -52,7 +56,8 @@ public class Config {
 			System.out.println("Loading config file...");
 			if(!configFile.exists()) {
 				System.out.println("No config file found.");
-				configFile.getParentFile().mkdirs();
+				if(configFile.getParentFile() != null)
+					configFile.getParentFile().mkdirs();
 				configFile.createNewFile();
 				return;
 			}
@@ -71,6 +76,7 @@ public class Config {
 				
 				// SQL 
 				if(line.startsWith(temp = "sql_enable"          )) sql_enable          = line.contains("TRUE") || line.contains("true");
+				if(line.startsWith(temp = "sql_lazy"            )) sql_lazy            = line.contains("TRUE") || line.contains("true");
 				if(line.startsWith(temp = "sql_getAddresses"    )) sql_getAddresses    = line.contains("TRUE") || line.contains("true");
 				if(line.startsWith(temp = "sql_updateAddresses" )) sql_updateAddresses = line.contains("TRUE") || line.contains("true");
 				if(line.startsWith(temp = "sql_updateTime "     )) sql_updateTime      = Integer.parseInt(line.replaceAll(temp, ""));
@@ -78,6 +84,7 @@ public class Config {
 				if(line.startsWith(temp = "sql_username "       )) sql_username        = line.replaceAll(temp, "");
 				if(line.startsWith(temp = "sql_password "       )) sql_password        = line.replaceAll(temp, "");
 				if(line.startsWith(temp = "sql_database "       )) sql_database        = line.replaceAll(temp, "");
+				if(line.startsWith(temp = "sql_groupID "        )) sql_groupID         = line.replaceAll(temp, "");
 				
 				// Ping information
 				if(line.startsWith(temp = "pingTimeOutTime "    )) pingTimeOutTime     = Integer.parseInt( line.replaceAll(temp, "") );
@@ -102,6 +109,7 @@ public class Config {
 			mw.write("\n");
 			mw.write("# SQL\n");
 			mw.write("sql_enable "+sql_enable+"\n");
+			mw.write("sql_lazy "+sql_lazy+"\n");
 			mw.write("sql_getAddresses "+sql_getAddresses+"\n");
 			mw.write("sql_updateAddresses "+sql_updateAddresses+"\n");
 			mw.write("sql_updateTime "+sql_updateTime+"\n");
@@ -109,6 +117,7 @@ public class Config {
 			mw.write("sql_database "+sql_database+"\n");
 			mw.write("sql_username "+sql_username+"\n");
 			mw.write("sql_password "+sql_password+"\n");
+			mw.write("sql_groupID "+sql_groupID+"\n");
 			mw.write("\n");
 			mw.write("# Ping Information\n");
 			mw.write("nmap "+nmap+"\n");

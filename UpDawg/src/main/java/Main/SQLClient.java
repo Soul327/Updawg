@@ -5,11 +5,17 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 
 import Converter.TimeConverter;
+import Misc.SDL;
 import PingChecker.Address;
+import PingChecker.Port;
 
+@Deprecated
 public class SQLClient {
 	static Statement stmt = null;
 	static Connection con = null;
@@ -17,7 +23,7 @@ public class SQLClient {
 	public static String status = "No Info";
 	
 	public static void openConnection() {
-		System.out.println("Opening SQL connection");
+		UpDawgLauncher.log("Opening SQL connection\n");
 		try {
 			Class.forName("com.mysql.jdbc.Driver");
 			con = DriverManager.getConnection(
@@ -27,12 +33,16 @@ public class SQLClient {
 			stmt = con.createStatement();
 			setupDatabase();
 		} catch (Exception e) {
-			System.out.println(e);
-			System.exit(0);
+//			UpDawgLauncher.log(e);
+//			System.exit(0);
+			SDL.sleep(1000);
+			UpDawgLauncher.log("Failed to open SQL connection\n");
 		}
 	}
+	
+	
 	public static void closeConnection() {
-		System.out.println("Closing SQL conection");
+		UpDawgLauncher.log("Closing SQL conection\n");
 		try {
 			con.close();
 		} catch (SQLException e) {
@@ -49,7 +59,14 @@ public class SQLClient {
 		for(int z=0;z<UpDawgLauncher.addresses.size();z++) {
 			Address a = UpDawgLauncher.addresses.get(z);
 			if(!a.updateSQL) continue;
-			update(a);
+			if(Config.sql_lazy) update(); else update(a);
+		}
+	}
+	
+	public static void updateForce() {
+		for(int z=0;z<UpDawgLauncher.addresses.size();z++) {
+			Address a = UpDawgLauncher.addresses.get(z);
+			if(Config.sql_lazy) update(); else update(a);
 		}
 	}
 	
@@ -59,21 +76,39 @@ public class SQLClient {
 	 * @param address  The address that will be updated in the SQL
 	 */
 	public static void update(Address address) {
+		if(Config.sql_groupID == null && Config.sql_groupID.length() <= 0) {
+			UpDawgLauncher.log("ERROR! Can not update when no groupID is given!\n");
+			return;
+		}
+		if(!Config.sql_updateAddresses) return;
+		
+		String timeStamp = Instant.now().getEpochSecond() + "";
+		
+		String query = "";
+		
 		try {
-			String query;
 			query  = "UPDATE Ips SET";
 			query += " HostName='"+address.hostName+"',";
-			query += " Time='"+(int)TimeConverter.nanoToMillisecond( address.lastTime )+"',";
-			query += " AdvTime='"+(int)TimeConverter.nanoToMillisecond( address.advTime )+"',";
 			query += " Stat="+address.status+",";
-			query += " Temperature="+address.lastTemp+",";
-			query += " Humidity="+address.lastHumidity;
+			query += " LastUpdate=" + timeStamp;
 			query += " WHERE PingingAddress='"+address.pingingAddress+"';";
-			
+			UpDawgLauncher.log( query );
 			stmt.executeUpdate(query);
+			
+			query = "DELETE FROM NMap WHERE uID=" + address.uid;
+			stmt.executeUpdate(query);
+			
+			for(Port port:address.ports) {
+				query = String.format("INSERT INTO NMap (uID, port, state, service) VALUES (%s, '%s', '%s', '%s')", address.uid, port.number, port.state, port.service);
+				UpDawgLauncher.log( query + "\n" );
+				stmt.executeUpdate(query);
+			}
+			
 			address.updateSQL = false;
 		} catch (SQLException e) {
-			System.out.println( "SQL connection loss, atempting to reopen." );
+//			e.printStackTrace();
+			UpDawgLauncher.log("Query: " + query + "\n");
+			UpDawgLauncher.log( "SQL connection loss, atempting to reopen.\n" );
 			openConnection();
 		}
 	}
@@ -82,18 +117,23 @@ public class SQLClient {
 	 * Gets addresses from the SQL server and updates the live addresses
 	 */
 	public static void getAddresses() {
-//		UpDawgLauncher.addresses = new ArrayList<Address>();
 		// Create list of addresses from the SQL server
 		if(stmt == null || con == null) openConnection();
 		if(stmt == null || con == null) return;
 		
 		ArrayList<Address> addresses = new ArrayList<Address>();
 		try {
-			ResultSet rs = stmt.executeQuery("SELECT * FROM Ips");
+			String where = String.format("('HID', '%s')", Config.sql_groupID);
+			
+			String query = "SELECT * FROM Ips WHERE GroupID IN " + where;
+//			String query = (Config.sql_groupID != null && Config.sql_groupID.length() > 0)? "SELECT * FROM Ips WHERE GroupID='" + Config.sql_groupID + "'" : "SELECT * FROM Ips";
+			ResultSet rs = stmt.executeQuery(query);
 			while (rs.next()) {
 				Address address = null;
 				String pingingAddress = rs.getString("PingingAddress");
 				String nickname = rs.getString("NickName");
+				String uid = rs.getString("uID");
+				Boolean hid = rs.getString("GroupID").equals("HID");
 				
 				for(int x=0;x<UpDawgLauncher.addresses.size();x++)
 					if(UpDawgLauncher.addresses.get(x).pingingAddress.equals(pingingAddress)) {
@@ -101,7 +141,11 @@ public class SQLClient {
 						break;
 					}
 				
-				if(address == null) address = new Address( pingingAddress );
+				if(address == null) {
+					address = new Address( pingingAddress, uid );
+					address.hidden = hid;
+					if(!hid) UpDawgLauncher.log("Added new address: " + pingingAddress + "\n");
+				}
 				
 				
 				if(nickname != null) address.nickname = nickname;

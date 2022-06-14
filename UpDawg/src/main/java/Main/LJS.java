@@ -11,6 +11,11 @@ import Misc.SDL;
 import PingChecker.Address;
 import Socket.SocketMisc;
 
+
+/**LJS - Local Java Server
+ * A local server stared to collect information from sensors, IE. piData's information
+ * @author Walter Ozmore
+ */
 public class LJS extends Thread {
 	ArrayList<Handler> handles;
 	
@@ -35,7 +40,7 @@ public class LJS extends Thread {
 		try {
 			ServerSocket ss = new ServerSocket(Config.ljs_port);
 			handles = new ArrayList<Handler>(); //Stores all clients
-			System.out.println("Server started");
+			UpDawgLauncher.log("Local Java Server started\n");
 			
 			while (!ss.isClosed()) {
 				Socket sock = ss.accept();
@@ -44,6 +49,7 @@ public class LJS extends Thread {
 				handles.add(hand);
 			}
 			
+			UpDawgLauncher.log("Local Java Server shuting down\n");
 			ss.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -56,7 +62,7 @@ public class LJS extends Thread {
 			if(handles.get(z).clientFailedToRespond >= 10) {
 				try {
 					handles.get(z).join();
-					System.out.println("Client "+handles.get(z).name+"'s connection has been dropped.");
+					UpDawgLauncher.log("Client "+handles.get(z).name+"'s connection has been dropped.\n");
 					handles.remove(z--);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
@@ -76,7 +82,7 @@ public class LJS extends Thread {
 					case SocketMisc.custom:
 						int temperature = handler.in.read();
 						int humidity = handler.in.read();
-						System.out.printf( "Temp: %d Humidity: %d%n", temperature, humidity );
+						UpDawgLauncher.log( String.format( "Temp: %d Humidity: %d%n", temperature, humidity ) + "\n" );
 						
 						if(address != null) {
 							address.lastTemp = temperature;
@@ -121,10 +127,8 @@ class Handler extends Thread {
 	public Address getAddress() {
 		for(int z=0;z<UpDawgLauncher.addresses.size();z++)
 			if(UpDawgLauncher.addresses.get(z).pingingAddress.equalsIgnoreCase(name)) {
-				System.out.println("FOUND ~ " + UpDawgLauncher.addresses.get(z).nickname);
 				return UpDawgLauncher.addresses.get(z);
 			}
-		System.out.println("No address found");
 		return null;
 	}
 	
